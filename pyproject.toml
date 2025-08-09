@@ -1,0 +1,13 @@
+[project]
+name = "bikidata-explore"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bikidata>=0.2.19",
+    "duckdb>=1.3.2",
+    "monsterui>=1.0.21",
+    "python-fasthtml>=0.12.22",
+    "uvicorn>=0.35.0",
+]
