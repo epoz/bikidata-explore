@@ -52,14 +52,14 @@ def query_block():
     )
 
 
-def obj_to_cell(obj):
+def obj_to_cell(obj, p_labels={}):
     buf = []
     for k, v in obj.items():
         if k in ("id", "graph"):
             continue
         buf.append(
             Div(
-                Div(k, cls="text-lg font-bold"),
+                Div(Span(k, cls="text-lg font-bold"), Span(p_labels.get(k, None))),
                 Div(*[P(vv) for vv in v], cls="p-1 pl-4"),
             )
         )
@@ -82,7 +82,6 @@ async def fragments_query(request: Request):
         return Div("Invalid JSON data", cls="error")
 
     try:
-        # data["exclude_properties"] = ["<http://schema.org/dataFeedElement>"]
         data["size"] = 20
         r = bikidata.query(data)
     except Exception as e:
@@ -90,6 +89,25 @@ async def fragments_query(request: Request):
             Pre(f"Error: {traceback.format_exc()}", cls="error"),
             Pre(json.dumps(data, indent=2)),
         )
+
+    # For all the properties, we also want there labels for a friendlier display
+    all_obj_properties = set(
+        [
+            piri
+            for obj in r.get("results", {}).values()
+            for piri in list(obj.keys())
+            if piri.startswith("<")
+        ]
+    )
+    filters = [{"op": "or", "p": "id", "o": piri} for piri in all_obj_properties]
+    #    filters.append({"p": "<http://www.w3.org/2000/01/rdf-schema#label>"})
+
+    piri_r = bikidata.query({"filters": filters})
+    p_labels = {}
+    for obj_iri, obj in piri_r.get("results", {}).items():
+        label = obj.get("<http://www.w3.org/2000/01/rdf-schema#label>", [""])[0]
+        if label:
+            p_labels[obj_iri] = label
 
     aggregates = Div(
         *[
@@ -105,7 +123,7 @@ async def fragments_query(request: Request):
             *[
                 Tr(
                     Td(str(uid)),
-                    Td(obj_to_cell(obj)),
+                    Td(obj_to_cell(obj, p_labels=p_labels)),
                 )
                 for uid, obj in r["results"].items()
             ]
